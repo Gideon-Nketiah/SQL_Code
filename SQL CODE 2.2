@@ -1,0 +1,20 @@
+WITH t1 AS
+(SELECT
+      (LAST_DAY(DATE_TRUNC(DATE (soh.OrderDate),Month))) AS OrderDate,--lastday returns last day of each month--
+      sal.CountryRegionCode,
+      sal.Name AS Region,
+      COUNT(DISTINCT soh.SalesOrderID)  AS TotalOrders,
+      COUNT(DISTINCT soh.CustomerID)  AS Number_Customers,
+      COUNT(DISTINCT soh.SalesPersonID)  AS Number_Sales_Persons,
+      ROUND (SUM (soh.TotalDue))  AS Total_w_tax -- Add round to remove extra decimal places --
+
+FROM `adwentureworks_db.salesorderheader` soh
+LEFT JOIN `adwentureworks_db.salesterritory` sal
+ON soh.TerritoryID = sal.TerritoryID
+
+GROUP BY 1,2,3)
+
+SELECT *,
+SUM(t1.Total_w_tax) OVER (PARTITION BY CountryRegionCode, t1.Region
+ORDER BY Total_w_tax) AS Cum_Sum
+FROM t1
