@@ -1,0 +1,29 @@
+With T1 AS(SELECT
+           LAST_DAY(DATE(OrderDate), MONTH) AS month_order,
+           T.CountryRegionCode AS CountryRegionCode, 
+           T.Name AS Region,
+           COUNT(SalesOrderID) AS num_orders,
+           COUNT (DISTINCT (CustomerID)) AS num_customers,
+           COUNT (DISTINCT (SalesPersonID)) AS num_sales_rep,
+           SUM(TotalDue) AS Total_W_tax
+
+          FROM `tc-da-1.adwentureworks_db.salesorderheader` S
+          JOIN `tc-da-1.adwentureworks_db.salesterritory` T
+          ON T.TerritoryID = S.TerritoryID
+          GROUP BY 1, 2, 3),
+   T2 AS (SELECT province.CountryRegionCode, AVG(tax.TaxRate) as avg_tax_rate, 
+            ROUND(COUNT(tax.StateProvinceID)/COUNT(province.StateProvinceID), 2) as perc_W_tax
+          FROM `tc-da-1.adwentureworks_db.stateprovince` province 
+        LEFT JOIN `tc-da-1.adwentureworks_db.salestaxrate` tax
+        ON tax.StateProvinceID = province.StateProvinceID
+         GROUP BY 1)
+
+Select 
+       T1.*,
+       DENSE_RANK() OVER (PARTITION BY T1.CountryRegionCode ORDER BY Total_W_tax DESC) as sales_rank,
+       SUM(Total_W_tax) OVER (PARTITION BY Region ORDER BY month_order) AS cum_sum, 
+       T2.avg_tax_rate, T2.perc_W_tax
+
+FROM T1
+JOIN T2
+ON T1.CountryRegionCode =T2.CountryRegionCode
